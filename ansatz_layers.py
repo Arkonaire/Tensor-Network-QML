@@ -9,6 +9,12 @@ def variational_layer(params, wires):
     qml.templates.layers.StronglyEntanglingLayers(weights, wires=wires)
 
 
+def embedding_layer(features, wires):
+
+    # Build embedding layer
+    qml.templates.embeddings.AngleEmbedding(features, wires=wires, rotation='Y')
+
+
 @qml.template
 def ttn_layer(params, input_size, bond_v):
 
