@@ -1,17 +1,20 @@
+import math
 import pennylane as qml
 
 
 def variational_layer(params, wires):
 
     # Build entangling layer
-    # weights = params.reshape((-1, len(wires), 3))
-    # qml.templates.layers.StronglyEntanglingLayers(weights, wires=wires)
-    for i in range(len(wires)):
-        qml.CNOT(wires=[wires[i], wires[(i + 1) % len(wires)]])
+    weights = params.reshape((-1, len(wires), 3))
+    qml.templates.layers.StronglyEntanglingLayers(weights, wires=wires)
 
 
 @qml.template
-def ttn_layer(params, num_layers, bond_v):
+def ttn_layer(params, input_size, bond_v):
+
+    # Acquire sizes
+    num_vqubits = int(input_size / bond_v)
+    num_layers = int(math.log2(num_vqubits))
 
     # Add TTN layers
     param_index = 0

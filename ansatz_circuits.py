@@ -1,33 +1,43 @@
-import math
 import ansatz_layers
 import pennylane as qml
 
 
-def ttn_ansatz_alpha(input_size, output_size, bond_v, device):
+def discriminative_ansatz(input_size, output_size, bond_v, device, network='TTN'):
 
-    # Acquire sizes
-    num_vqubits = int(input_size / bond_v)
-    num_layers = int(math.log2(num_vqubits))
+    # Select tensor network layer
+    if network == 'TTN':
+        layer = ansatz_layers.ttn_layer
+    elif network == 'MPS':
+        layer = ansatz_layers.mps_layer
+    else:
+        raise KeyError('Invalid Ansatz')
 
     # Build core ansatz
     @qml.qnode(device)
     def var_ckt(features, params):
         qml.templates.embeddings.AngleEmbedding(features, wires=range(input_size), rotation='Y')
-        ansatz_layers.ttn_layer(params, num_layers, bond_v)
+        layer(params, input_size, bond_v)
         return qml.probs(range(output_size))
 
     # Return QNode
     return var_ckt
 
 
-def mps_ansatz_alpha(input_size, output_size, bond_v, device):
+def generative_ansatz(num_qubits, bond_v, device, network='TTN'):
+
+    # Select tensor network layer
+    if network == 'TTN':
+        layer = ansatz_layers.ttn_layer
+    elif network == 'MPS':
+        layer = ansatz_layers.mps_layer
+    else:
+        raise KeyError('Invalid Ansatz')
 
     # Build core ansatz
     @qml.qnode(device)
-    def var_ckt(features, params):
-        qml.templates.embeddings.AngleEmbedding(features, wires=range(input_size), rotation='Y')
-        ansatz_layers.mps_layer(params, input_size, bond_v)
-        return qml.probs(range(output_size))
+    def var_ckt(params):
+        qml.inv(layer(params, num_qubits, bond_v))
+        return qml.probs(range(num_qubits))
 
     # Return QNode
     return var_ckt
