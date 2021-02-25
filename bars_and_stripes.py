@@ -9,7 +9,7 @@ import time
 
 class BarStripeGenerator:
 
-    def __init__(self, shape, netstruct, device=None):
+    def __init__(self, shape, netstruct, device=None, entanglers=1):
 
         # Initialize basic attributes
         self.shape = shape
@@ -21,8 +21,8 @@ class BarStripeGenerator:
 
         # Hyperparameters
         self.steps = 1000
-        self.stepsize = 0.2
-        self.cost_multiplier = 100
+        self.stepsize = 0.1
+        self.cost_multiplier = 10
 
         # Load device and circuit
         self.device = device if device is not None else qml.device('default.qubit', wires=self.num_qubits)
@@ -35,8 +35,11 @@ class BarStripeGenerator:
         self.build_valid_set()
         self.build_target_distribution()
 
+        # Initialize parameters
+        self.params = 2 * np.pi * np.random.rand(sum([2 ** i for i in range(self.num_layers)]),
+                                                 6 * self.bond_v * entanglers)
+
         # Initialize output containers
-        self.params = 2 * np.pi * np.random.rand(sum([2 ** i for i in range(self.num_layers)]), 6 * self.bond_v)
         self.costs = np.zeros(self.steps)
         self.probs = None
         self.runtime = 0
@@ -98,6 +101,7 @@ class BarStripeGenerator:
 
         # Acquire valid filename for save
         filename = self.network + '_' + str(self.shape[0]) + '_' + str(self.shape[1]) + '_0'
+        filename = 'models/' + filename
         file_index = 0
         while os.path.exists(filename):
             file_index += 1
@@ -112,7 +116,7 @@ class BarStripeGenerator:
 
         # Load trained parameters
         filename = self.network + '_' + str(self.shape[0]) + '_' + str(self.shape[1])
-        filename = filename + '_' + str(file_index)
+        filename = 'models/' + filename + '_' + str(file_index)
         with open(filename, 'rb') as file:
             self.costs, self.params, self.runtime = pickle.load(file)
             file.close()
@@ -142,10 +146,11 @@ class BarStripeGenerator:
         plt.title('Output distribution')
         plt.xlabel('Sample Output')
         plt.ylabel('Probability')
+        plt.grid(True)
 
         # Plot cost curve
         plt.figure()
-        plt.plot(range(self.steps), self.costs)
+        plt.plot(range(len(self.costs)), self.costs)
         plt.title('Cost Curve')
         plt.xlabel('Iteration No.')
         plt.ylabel('Cost')
