@@ -27,7 +27,8 @@ class BarStripeGenerator:
 
         # Build valid output set
         self.valid_set = np.zeros((2 ** self.shape[0] + 2 ** self.shape[1] - 2, self.shape[0] * self.shape[1]))
-        self.taget_dist = np.zeros(self.num_qubits)
+        self.valid_set = self.valid_set.astype(int)
+        self.target_dist = np.zeros(2 ** self.num_qubits)
         self.build_valid_set()
         self.build_target_distribution()
 
@@ -60,14 +61,14 @@ class BarStripeGenerator:
         for z in self.valid_set:
             bitstr = "".join([str(i) for i in z])
             index = int(bitstr, 2)
-            self.taget_dist[index] = 1 / self.valid_set.shape[0]
+            self.target_dist[index] = 1 / self.valid_set.shape[0]
 
     def train_model(self):
 
         # Define cost function
         def costfunc(params):
             probs = self.var_ckt(params)
-            loss = sum((probs - self.taget_dist) ** 2)
+            loss = sum((probs - self.target_dist) ** 2)
             return loss
 
         # Optimize
@@ -75,10 +76,15 @@ class BarStripeGenerator:
         for i in range(self.steps):
             self.params = opt.step(costfunc, self.params)
 
-    def sample(self):
+    def sample(self, params=None):
 
-        # Sample output TODO: Visualize results
-        probs = self.var_ckt(self.params)
+        # Sample output and show grid
+        params = self.params if params is None else params
+        probs = self.var_ckt(params)
+        index_max = max(range(len(probs)), key=probs.__getitem__)
+        bits = format(index_max, '0' + str(self.num_qubits) + 'b')
+        grid = np.array([int(i) for i in bits])
+        self.show_grid(grid)
 
     def show_grid(self, grid):
 
