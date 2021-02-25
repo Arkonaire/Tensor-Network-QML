@@ -1,3 +1,4 @@
+
 import pennylane as qml
 import numpy as np
 import matplotlib.pyplot as plt
@@ -36,8 +37,8 @@ class BarStripeGenerator:
         self.build_target_distribution()
 
         # Initialize parameters
-        self.params = 2 * np.pi * np.random.rand(sum([2 ** i for i in range(self.num_layers)]),
-                                                 6 * self.bond_v * entanglers)
+        param_size = sum([2 ** i for i in range(self.num_layers)]) if self.network == 'TTN' else self.num_vqubits - 1
+        self.params = 2 * np.pi * np.random.rand(param_size, 6 * self.bond_v * entanglers)
 
         # Initialize output containers
         self.costs = np.zeros(self.steps)
@@ -140,7 +141,7 @@ class BarStripeGenerator:
         grid = np.array([int(i) for i in bits])
         self.show_grid(grid)
 
-        # Plot probability distribution
+        # Plot probability distribution TODO: Deal with the resolution problem.
         plt.figure()
         plt.bar(range(len(self.probs)), self.probs)
         plt.title('Output distribution')
