@@ -1,4 +1,3 @@
-
 import pennylane as qml
 import numpy as np
 import matplotlib.pyplot as plt
@@ -102,7 +101,7 @@ class BarStripeGenerator:
 
         # Acquire valid filename for save
         filename = self.network + '_' + str(self.shape[0]) + '_' + str(self.shape[1]) + '_0'
-        filename = 'models/' + filename
+        filename = 'generative_models/' + filename
         file_index = 0
         while os.path.exists(filename):
             file_index += 1
@@ -117,7 +116,7 @@ class BarStripeGenerator:
 
         # Load trained parameters
         filename = self.network + '_' + str(self.shape[0]) + '_' + str(self.shape[1])
-        filename = 'models/' + filename + '_' + str(file_index)
+        filename = 'generative_models/' + filename + '_' + str(file_index)
         with open(filename, 'rb') as file:
             self.costs, self.params, self.runtime = pickle.load(file)
             file.close()
