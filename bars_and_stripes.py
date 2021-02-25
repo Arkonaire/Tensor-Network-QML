@@ -1,7 +1,10 @@
-import numpy as np
 import pennylane as qml
-import ansatz_circuits as anc
+import numpy as np
 import matplotlib.pyplot as plt
+import ansatz_circuits as anc
+import os.path
+import pickle
+import time
 
 
 class BarStripeGenerator:
@@ -19,6 +22,7 @@ class BarStripeGenerator:
         # Hyperparameters
         self.steps = 1000
         self.stepsize = 0.2
+        self.cost_multiplier = 100
 
         # Load device and circuit
         self.device = device if device is not None else qml.device('default.qubit', wires=self.num_qubits)
@@ -35,6 +39,7 @@ class BarStripeGenerator:
         self.params = 2 * np.pi * np.random.rand(sum([2 ** i for i in range(self.num_layers)]), 6 * self.bond_v)
         self.costs = np.zeros(self.steps)
         self.probs = None
+        self.runtime = 0
 
     def build_valid_set(self):
 
@@ -73,12 +78,44 @@ class BarStripeGenerator:
         def costfunc(params):
             probs = self.var_ckt(params)
             loss = sum((probs - self.target_dist) ** 2)
+            loss *= self.cost_multiplier
             return loss
 
-        # Optimize
+        # Prepare to optimize
         opt = qml.MomentumOptimizer(stepsize=self.stepsize)
+        self.costs = np.zeros(self.steps)
+        t0 = time.time()
+
+        # Optimize
         for i in range(self.steps):
             self.params, self.costs[i] = opt.step_and_cost(costfunc, self.params)
+            if (i + 1) % 100 == 0 or i == 0:
+                print('Iteration ' + str(i + 1) + ': Cost = ' + str(self.costs[i]))
+
+        # Record runtime
+        self.runtime = time.time() - t0
+        print('Execution Time: ' + str(self.runtime) + ' sec')
+
+        # Acquire valid filename for save
+        filename = self.network + '_' + str(self.shape[0]) + '_' + str(self.shape[1]) + '_0'
+        file_index = 0
+        while os.path.exists(filename):
+            file_index += 1
+            filename = filename[:-1] + str(file_index)
+
+        # Save data
+        with open(filename, 'wb') as file:
+            pickle.dump([self.costs, self.params, self.runtime], file)
+            file.close()
+
+    def load_model(self, file_index=0):
+
+        # Load trained parameters
+        filename = self.network + '_' + str(self.shape[0]) + '_' + str(self.shape[1])
+        filename = filename + '_' + str(file_index)
+        with open(filename, 'rb') as file:
+            self.costs, self.params, self.runtime = pickle.load(file)
+            file.close()
 
     def sample(self, params=None):
 
