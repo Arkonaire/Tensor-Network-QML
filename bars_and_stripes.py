@@ -22,7 +22,6 @@ class BarStripeGenerator:
 
         # Load device and circuit
         self.device = device if device is not None else qml.device('default.qubit', wires=self.num_qubits)
-        self.params = 2 * np.pi * np.random.rand(sum([2 ** i for i in range(self.num_layers)]), 6 * self.bond_v)
         self.var_ckt = anc.generative_ansatz(self.num_qubits, self.bond_v, self.device, network=self.network)
 
         # Build valid output set
@@ -31,6 +30,11 @@ class BarStripeGenerator:
         self.target_dist = np.zeros(2 ** self.num_qubits)
         self.build_valid_set()
         self.build_target_distribution()
+
+        # Initialize output containers
+        self.params = 2 * np.pi * np.random.rand(sum([2 ** i for i in range(self.num_layers)]), 6 * self.bond_v)
+        self.costs = np.zeros(self.steps)
+        self.probs = None
 
     def build_valid_set(self):
 
@@ -74,17 +78,42 @@ class BarStripeGenerator:
         # Optimize
         opt = qml.MomentumOptimizer(stepsize=self.stepsize)
         for i in range(self.steps):
-            self.params = opt.step(costfunc, self.params)
+            self.params, self.costs[i] = opt.step_and_cost(costfunc, self.params)
 
     def sample(self, params=None):
 
-        # Sample output and show grid
+        # Sample output
         params = self.params if params is None else params
-        probs = self.var_ckt(params)
-        index_max = max(range(len(probs)), key=probs.__getitem__)
+        self.probs = self.var_ckt(params)
+
+    def visualize(self):
+
+        # Sample if required
+        if self.probs is None:
+            self.sample()
+
+        # Plot output
+        plt.figure()
+        index_max = max(range(len(self.probs)), key=self.probs.__getitem__)
         bits = format(index_max, '0' + str(self.num_qubits) + 'b')
         grid = np.array([int(i) for i in bits])
         self.show_grid(grid)
+
+        # Plot probability distribution
+        plt.figure()
+        plt.bar(range(len(self.probs)), self.probs)
+        plt.title('Output distribution')
+        plt.xlabel('Sample Output')
+        plt.ylabel('Probability')
+
+        # Plot cost curve
+        plt.figure()
+        plt.plot(range(self.steps), self.costs)
+        plt.title('Cost Curve')
+        plt.xlabel('Iteration No.')
+        plt.ylabel('Cost')
+        plt.grid(True)
+        plt.show()
 
     def show_grid(self, grid):
 
