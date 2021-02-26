@@ -26,13 +26,11 @@ class RainForecast:
         self.stepsize = 0.1
         self.batch_size = 10
         self.test_size = 1000
-        self.cols_to_drop = [0, 4, 5, 6, 8, 9]
-        self.cost_multiplier = 10
+        self.cost_multiplier = 1
 
         # Load data
         with open(self.path, 'rb') as file:
             self.features, self.labels, self.data_stats = pickle.load(file)
-            np.delete(self.features, self.cols_to_drop, axis=1)
             file.close()
 
         # Organize data
@@ -57,7 +55,7 @@ class RainForecast:
 
     def train_model(self):
 
-        # Define cost function TODO: Implement cost function
+        # Define cost function
         def costfunc(params):
 
             # Initialization
