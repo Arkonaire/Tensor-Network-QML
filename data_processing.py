@@ -84,6 +84,7 @@ if __name__ == '__main__':
 
     # Save the data object
     obj = DataProcessor()
+    stats = [(obj.min_values[i], obj.mid_values[i], obj.max_values[i]) for i in range(len(obj.mid_values))]
     file = open('rain_dataset/processed_data', 'wb')
-    pickle.dump(obj, file)
+    pickle.dump([obj.features, obj.labels, stats], file)
     file.close()

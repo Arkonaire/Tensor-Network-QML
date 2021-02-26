@@ -10,10 +10,10 @@ import time
 
 class RainForecast:
 
-    def __init__(self, shape, netstruct, device=None, entanglers=1):
+    def __init__(self, datapath, netstruct, device=None, entanglers=1):
 
         # Initialize basic attributes
-        self.shape = shape
+        self.path = datapath
         self.bond_v = netstruct['bond_v']
         self.network = netstruct['network']
         self.input_size = netstruct['input_size']
@@ -24,12 +24,22 @@ class RainForecast:
         # Hyperparameters
         self.steps = 1000
         self.stepsize = 0.1
+        self.batch_size = 10
+        self.test_size = 1000
+        self.cols_to_drop = [0, 4, 5, 6, 8, 9]
         self.cost_multiplier = 10
 
         # Load data
-        with open('rain_dataset/processed_data') as file:
-            self.data = pickle.load(file)
+        with open(self.path, 'rb') as file:
+            self.features, self.labels, self.data_stats = pickle.load(file)
+            np.delete(self.features, self.cols_to_drop, axis=1)
             file.close()
+
+        # Organize data
+        self.train_X = self.features[:-self.test_size, :]
+        self.test_X = self.features[-self.test_size:, :]
+        self.train_Y = self.labels[:-self.test_size, :]
+        self.test_Y = self.labels[-self.test_size:, :]
 
         # Load device and circuit
         self.device = device if device is not None else qml.device('default.qubit', wires=self.input_size)
@@ -49,8 +59,19 @@ class RainForecast:
 
         # Define cost function TODO: Implement cost function
         def costfunc(params):
-            probs = self.var_ckt(params)
-            loss = sum(probs ** 2)
+
+            # Initialization
+            batch_index = np.random.randint(0, self.train_X.shape[0], (self.batch_size,))
+            batch_X = self.train_X[batch_index]
+            batch_Y = self.train_Y[batch_index]
+            loss = 0
+
+            # Calculate losses
+            for i in range(self.batch_size):
+                pred = self.var_ckt(batch_X[i], params)
+                loss += (pred[0] - batch_Y[i][0]) ** 2 + (pred[1] - batch_Y[i][1]) ** 2
+
+            # Return cost
             loss *= self.cost_multiplier
             return loss
 
@@ -70,7 +91,7 @@ class RainForecast:
         print('Execution Time: ' + str(self.runtime) + ' sec')
 
         # Acquire valid filename for save
-        filename = self.network + '_' + str(self.shape[0]) + '_' + str(self.shape[1]) + '_0'
+        filename = self.network + '_0'
         filename = 'discriminative_models/' + filename
         file_index = 0
         while os.path.exists(filename):
@@ -85,31 +106,34 @@ class RainForecast:
     def load_model(self, file_index=0):
 
         # Load trained parameters
-        filename = self.network + '_' + str(self.shape[0]) + '_' + str(self.shape[1])
-        filename = 'discriminative_models/' + filename + '_' + str(file_index)
+        filename = self.network + '_' + str(file_index)
+        filename = 'discriminative_models/' + filename
         with open(filename, 'rb') as file:
             self.costs, self.params, self.runtime = pickle.load(file)
             file.close()
 
-    def sample(self, params=None):
+    def sample(self, features, params=None):
 
         # Sample output
         params = self.params if params is None else params
-        self.probs = self.var_ckt(params)
+        self.probs = self.var_ckt(features, params)
 
     def visualize(self):
 
         # Sample if required
         if self.probs is None:
-            self.sample()
+            self.sample(self.test_X[np.random.randint(0, self.test_size)])
 
         # Print output
         index_max = max(range(len(self.probs)), key=self.probs.__getitem__)
         bits = format(index_max, '0' + str(self.output_size) + 'b')
         bits = np.array([int(i) for i in bits])
-        print('Output = ', bits)     # TODO: More infromative output
+        rain_today = (bits[0] == 1)
+        rain_tomorrow = (bits[1] == 1)
+        print('Rain Today?: ', rain_today)
+        print('Rain Tomorrow?: ', rain_tomorrow)
 
-        # Plot probability distribution TODO: Deal with the resolution problem.
+        # Plot probability distribution
         plt.figure()
         plt.bar(range(len(self.probs)), self.probs)
         plt.title('Output distribution')
