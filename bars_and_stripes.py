@@ -127,42 +127,50 @@ class BarStripeGenerator:
         params = self.params if params is None else params
         self.probs = self.var_ckt(params)
 
-    def visualize(self):
+    def visualize(self, axes=None):
 
         # Sample if required
         if self.probs is None:
             self.sample()
 
+        # Resolve axes
+        if axes is None:
+            fig = plt.figure(figsize=(20, 10))
+            axes = [fig.add_subplot(2, 2, 1), fig.add_subplot(2, 1, 2), fig.add_subplot(2, 2, 2)]
+
         # Plot output
-        plt.figure()
         index_max = max(range(len(self.probs)), key=self.probs.__getitem__)
         bits = format(index_max, '0' + str(self.num_qubits) + 'b')
         grid = np.array([int(i) for i in bits])
-        self.show_grid(grid)
+        self.show_grid(grid, axis=axes[0])
+        axes[0].set_title('Most Probable Output')
 
-        # Plot probability distribution TODO: Deal with the resolution problem.
-        plt.figure()
-        plt.bar(range(len(self.probs)), self.probs)
-        plt.title('Output distribution')
-        plt.xlabel('Sample Output')
-        plt.ylabel('Probability')
-        plt.grid(True)
+        # Plot probability distribution
+        axes[1].bar(range(len(self.probs)), self.probs)
+        axes[1].set_title('Output distribution')
+        axes[1].set_xlabel('Sample Output')
+        axes[1].set_ylabel('Probability')
+        axes[1].grid(True)
 
         # Plot cost curve
-        plt.figure()
-        plt.plot(range(len(self.costs)), self.costs)
-        plt.title('Cost Curve')
-        plt.xlabel('Iteration No.')
-        plt.ylabel('Cost')
-        plt.grid(True)
+        axes[2].plot(range(len(self.costs)), self.costs)
+        axes[2].set_title('Cost Curve')
+        axes[2].set_xlabel('Iteration No.')
+        axes[2].set_ylabel('Cost')
+        axes[2].grid(True)
         plt.show()
 
-    def show_grid(self, grid):
+    def show_grid(self, grid, axis=None):
+
+        # Resolve axis
+        if axis is None:
+            fig = plt.figure()
+            axis = fig.add_subplot(1, 1, 1)
 
         # Plot data
         grid = grid.reshape(self.shape)
-        plt.imshow(grid)
-        plt.xticks(np.arange(0.5, self.shape[1], 1.0), [])
-        plt.yticks(np.arange(-0.5, self.shape[0], 1.0), [])
-        plt.grid(True)
+        axis.imshow(grid)
+        axis.set_xticks(np.arange(0.5, self.shape[1], 1.0))
+        axis.set_yticks(np.arange(-0.5, self.shape[0], 1.0))
+        axis.grid(True)
         plt.show()
