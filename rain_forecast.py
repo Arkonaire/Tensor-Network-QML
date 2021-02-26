@@ -2,7 +2,6 @@ import pennylane as qml
 import numpy as np
 import matplotlib.pyplot as plt
 import ansatz_circuits as anc
-import data_processing as dataproc
 
 import os.path
 import pickle
@@ -27,8 +26,12 @@ class RainForecast:
         self.stepsize = 0.1
         self.cost_multiplier = 10
 
-        # Load device, data and circuit
-        self.data = dataproc.load_data('rain_dataset/weatherAUS.csv')
+        # Load data
+        with open('rain_dataset/processed_data') as file:
+            self.data = pickle.load(file)
+            file.close()
+
+        # Load device and circuit
         self.device = device if device is not None else qml.device('default.qubit', wires=self.input_size)
         self.var_ckt = anc.discriminative_ansatz(self.input_size, self.output_size,
                                                  self.bond_v, self.device, network=self.network)
